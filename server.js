@@ -74,36 +74,53 @@ app.post('/upload', upload.single('file'), (req, res) => {
 
 app.post('/users/:userId', async (req, res) => {
   const userId = req.params.userId;
-  const netAmounts = {};
-  const inputTimestamp = new Date('2022-09-27 12:00:00');
+  const { timestamp } = req.body;
+  const inputTimestamp = new Date(timestamp);
+
+  // Validate the input timestamp
+  if (isNaN(inputTimestamp.getTime())) {
+    return res.status(400).send({ error: 'Invalid timestamp format' });
+  }
+
   console.log(`Fetching data for user with ID: ${userId}`);
 
-  const trades = await Trade.findOne({ User_Id: userId });
+  try {
+    const trades = await Trade.findOne({ User_Id: userId });
 
-  console.log(trades.Trades)
-
-  const arr=trades.Trades;
-
-  arr.forEach(trade => {
-    const tradeTimestamp = new Date(trade.UTC_Time);
-  
-    // Check if the trade occurred before the input timestamp
-    if (tradeTimestamp < inputTimestamp) {
-      // Determine the operation type (+ for Buy, - for Sell)
-      const operationSign = trade.Operation === 'Buy' ? 1 : -1;
-  
-      // Initialize or update netAmounts for the BaseCoin
-      if (!netAmounts[trade.BaseCoin]) {
-        netAmounts[trade.BaseCoin] = 0;
-      }
-      netAmounts[trade.BaseCoin] += operationSign * trade.BuySellAmount;
+    if (!trades) {
+      return res.status(404).send({ error: 'User not found or no trades available' });
     }
-  });
 
-  console.log(netAmounts);
+    console.log(trades.Trades);
 
-  // You can send a response back if needed
-  res.send(`Fetching data for user with ID: ${userId}`);
+    const arr = trades.Trades;
+    const netAmounts = {};
+
+    arr.forEach(trade => {
+      const tradeTimestamp = new Date(trade.UTC_Time);
+
+      // Check if the trade occurred before the input timestamp
+      if (tradeTimestamp < inputTimestamp) {
+        // Determine the operation type (+ for Buy, - for Sell)
+        const operationSign = trade.Operation === 'Buy' ? 1 : -1;
+
+        // Initialize or update netAmounts for the BaseCoin
+        if (!netAmounts[trade.BaseCoin]) {
+          netAmounts[trade.BaseCoin] = 0;
+        }
+        netAmounts[trade.BaseCoin] += operationSign * trade.BuySellAmount;
+      }
+    });
+
+    console.log(netAmounts);
+
+    // Send the netAmounts in the response with status 200
+    res.status(200).send({ netAmounts });
+
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    res.status(500).send({ error: 'Internal server error' });
+  }
 });
 
 
