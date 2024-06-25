@@ -7,8 +7,6 @@ const tradeSchema = new mongoose.Schema({
             UTC_Time: { type: Date, required: true },
             Operation: { type: String, required: true },
             Market: { type: String, required: true },
-            BaseCoin: { type: String, required: true },
-            QuoteCoin: { type: String, required: true },
             BuySellAmount: { type: Number, required: true },
             Price: { type: Number, required: true }
         }]
